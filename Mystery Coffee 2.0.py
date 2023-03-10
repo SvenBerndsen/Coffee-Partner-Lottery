@@ -134,7 +134,11 @@ for group in ngroups:
 
     
 # write output to console
-print(output_string)
+print(f'''
+-----------------------------
+Today's conversation starter:
+-----------------------------    
+{output_string}''')
 
 # write output into text file for later use
 with open(new_groups_txt, "wb") as file:
