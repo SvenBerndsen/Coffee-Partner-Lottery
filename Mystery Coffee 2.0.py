@@ -29,6 +29,15 @@ new_groups_csv = "Coffee Partner Lottery new groups.csv"
 
 # path to CSV file that stores all groups (to avoid repetition)
 all_groups_csv = "Coffee Partner Lottery all groups.csv"
+<<<<<<< Updated upstream
+=======
+
+# path to CSV file of conversation starters
+conversation_starters = "conversation_starters.csv"
+
+# path to TXT file that stores the messages to the participants of this round
+messages_txt = "Coffee Partner Lottery messages to participants.txt"
+>>>>>>> Stashed changes
         
 # init set of old groups
 ogroups = set()
@@ -134,11 +143,50 @@ for group in ngroups:
 
     
 # write output to console
+<<<<<<< Updated upstream
+=======
+print(output_string)
+
+# print conversation starter too    
+>>>>>>> Stashed changes
 print(f'''
 -----------------------------
 Today's conversation starter:
 -----------------------------    
+<<<<<<< Updated upstream
 {output_string}''')
+=======
+{convo_starter}''')
+
+
+# Output text file with personalized message to each group member
+with open(messages_txt, "w") as file:
+    for group in ngroups:
+        group = list(group)
+        group_names_emails = ''
+        for i in range(0,len(group)):
+            name_email = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]} ({group[i]})"
+            if i < len(group)-1:
+                group_names_emails += name_email + ", "
+            else:
+                group_names_emails += name_email
+        
+        for i in range(0,len(group)):
+            message = f'''
+Dear {formdata[formdata[header_email] == group[i]].iloc[0][header_name]},
+
+Thank you for signing up for the Mystery Coffee 2.0 this week.
+
+Your group for this week is: 
+    {group_names_emails}
+
+The conversation starter for this week is: 
+    {convo_starter}
+
+Wishing you lots of fun on your coffee date this week!
+The Mystery Coffee 2.0 Team \n \n \n'''
+            file.write(message)
+>>>>>>> Stashed changes
 
 # write output into text file for later use
 with open(new_groups_txt, "wb") as file:
