@@ -3,8 +3,7 @@
 # Code written by:
 # Sven Berndsen 5679885
 # Nyasha Grecu 
-
-# Chris
+# Christos Psaropoulos 8757976
 # Marieke
 
 import pandas as pd
@@ -57,6 +56,10 @@ formdata = pd.read_csv(url, sep=DELIMITER)
 # create duplicate-free list of participants
 participants = list(set(formdata[header_email]))
 
+# load conversation starters
+all_convo_starters = pd.read_csv(conversation_starters)
+convo_starters = list(all_convo_starters.iloc[:,0])
+convo_starter = random.choice(convo_starters)
 
  # init set of new groups
 ngroups = set()
@@ -93,33 +96,43 @@ def make_group(size):
     plist.sort() # sort list alphabetically
     ngroups.add(tuple(plist)) # add created group to list of groups
     
-
 # try creating new groups until successful
-while not new_groups_found:   # to do: add a maximum number of tries
-  
+max_attempts = 10
+attempts = 0
+new_groups_found = False
+while not new_groups_found and attempts < max_attempts:
+    attempts += 1
+
     # Calculate remainder when dividing number of participants by chosen group size
-    remainder = len(participants)%group_size
-    
+    remainder = len(participants) % group_size
+
     # If there is 2 or more people left over, make a group of this size
     if remainder != 0 and remainder != 1:
         make_group(remainder)
-        
+
     # If there is exactly 1 person left over, create a group with an extra member
     elif remainder == 1:
-        make_group(group_size+1)
-  
+        make_group(group_size + 1)
+
     # while still participants left to group, create groups of the chosen group size
+    nparticipants = copy.deepcopy(participants)  #maybe it's best to put nparticipants = participants[:] instead?
     while len(nparticipants) > 0:
-        make_group(group_size) 
-        
+        make_group(group_size)
 
-    # check if all new groups are indeed new, else reset
-    if ngroups.isdisjoint(ogroups):
-        new_groups_found = True
-    else:
-        ngroups = set()
-        nparticipants = copy.deepcopy(participants)
-
+    try:
+        # check if all new groups are indeed new, else reset
+        if len(set(ngroups) - set(ogroups)) == len(ngroups):
+            new_groups_found = True
+        else:
+            ngroups = set()
+            nparticipants = participants[:]
+    except ValueError:   # If ngroups and ogroups have different lengths, continue loop
+    
+    #If after 10 attempts no new groups have been found, the program will procceed with the latest groups
+        if attempts == max_attempts: 
+            print("We tried our best to create new groups and bring together people that hadn't met before. "
+                  "Unfortunately, that wasn't entirely possible. One or more groups might have already met.")
+        continue
 
 # assemble output for printout
 output_string = ""
@@ -142,13 +155,12 @@ for group in ngroups:
 # write output to console
 print(output_string)
 
-# print conversation starter too    
+# print conversation starter  to screen too    
 print(f'''
 -----------------------------
 Today's conversation starter:
 -----------------------------    
 {convo_starter}''')
-
 
 # Output text file with personalized message to each group member
 with open(messages_txt, "w") as file:
@@ -177,7 +189,6 @@ The conversation starter for this week is:
 Wishing you lots of fun on your coffee date this week!
 The Mystery Coffee 2.0 Team \n \n \n'''
             file.write(message)
-
 
 # write output into text file for later use
 with open(new_groups_txt, "wb") as file:
@@ -257,4 +268,3 @@ Your group for this week is:
 # print finishing message
 print()
 print("Job done.")
-
