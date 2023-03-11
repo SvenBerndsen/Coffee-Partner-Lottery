@@ -29,15 +29,12 @@ new_groups_csv = "Coffee Partner Lottery new groups.csv"
 
 # path to CSV file that stores all groups (to avoid repetition)
 all_groups_csv = "Coffee Partner Lottery all groups.csv"
-<<<<<<< Updated upstream
-=======
 
 # path to CSV file of conversation starters
 conversation_starters = "conversation_starters.csv"
 
 # path to TXT file that stores the messages to the participants of this round
 messages_txt = "Coffee Partner Lottery messages to participants.txt"
->>>>>>> Stashed changes
         
 # init set of old groups
 ogroups = set()
@@ -143,19 +140,13 @@ for group in ngroups:
 
     
 # write output to console
-<<<<<<< Updated upstream
-=======
 print(output_string)
 
 # print conversation starter too    
->>>>>>> Stashed changes
 print(f'''
 -----------------------------
 Today's conversation starter:
 -----------------------------    
-<<<<<<< Updated upstream
-{output_string}''')
-=======
 {convo_starter}''')
 
 
@@ -186,7 +177,7 @@ The conversation starter for this week is:
 Wishing you lots of fun on your coffee date this week!
 The Mystery Coffee 2.0 Team \n \n \n'''
             file.write(message)
->>>>>>> Stashed changes
+
 
 # write output into text file for later use
 with open(new_groups_txt, "wb") as file:
