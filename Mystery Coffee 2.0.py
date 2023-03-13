@@ -1,16 +1,19 @@
-
 # Project 2 COTAPP23, Group go1po1.
 # Code written by:
-# Sven Berndsen 5679885
+# Sven Berndsen 
 # Nyasha Grecu 
-# Christos Psaropoulos 8757976
-# Marieke
+# Christos Psaropoulos
+# Marieke Hooimeijer
 
+# imports
 import pandas as pd
 import csv
 import random
 import copy
 import os
+import smtplib, ssl #used for email sending
+import sys, time #used for loading animation
+
 
 # link to the online file with all participants linked to google form
 SHEET_ID = '1G1Kbl63qxe4FoTaBuBrmKCtodseAqjhbt2UN8pfRsfI'
@@ -30,7 +33,7 @@ new_groups_csv = "Coffee Partner Lottery new groups.csv"
 all_groups_csv = "Coffee Partner Lottery all groups.csv"
 
 # path to CSV file of conversation starters
-conversation_starters = "conversation_starters.csv"
+conversation_starters = pd.read_csv("conversation_starters.csv")
 
 # path to TXT file that stores the messages to the participants of this round
 messages_txt = "Coffee Partner Lottery messages to participants.txt"
@@ -50,16 +53,12 @@ if os.path.exists(all_groups_csv):
                 group.append(row[i])                        
             ogroups.add(tuple(group))
 
-#load participant's data from the online google sheet
+# load participant's data from the online google sheet
 formdata = pd.read_csv(url, sep=DELIMITER)
 
 # create duplicate-free list of participants
 participants = list(set(formdata[header_email]))
 
-# load conversation starters
-all_convo_starters = pd.read_csv(conversation_starters)
-convo_starters = list(all_convo_starters.iloc[:,0])
-convo_starter = random.choice(convo_starters)
 
  # init set of new groups
 ngroups = set()
@@ -71,12 +70,15 @@ nparticipants = copy.deepcopy(participants)
 # Boolean flag to check if new groups has been found
 new_groups_found = False
 
+# welcome user
+print("Welcome to the mystery coffee group maker 2.0!")
+print("""This program will make groups based on all participants
+that signed up via the online form (https://for ms.gle/sBDoR1QxJJr4EeecA)""")
+
 # ask for group size, max 5
 while True:
     try:
-        group_size =  int(input('''
-How many people would you like in each group? (Please enter an integer number. 
-The minimum group size is 2 and the maximum is 5) '''))
+        group_size =  int(input('''How many people would you like in each group? (Please enter an number between 2 and 5) '''))
         if group_size < 2 :
             print ('The minimum number of group members is 2. Please try again.')
         if group_size > 1 and group_size < 6:
@@ -96,71 +98,100 @@ def make_group(size):
     plist.sort() # sort list alphabetically
     ngroups.add(tuple(plist)) # add created group to list of groups
     
+
 # try creating new groups until successful
-max_attempts = 10
-attempts = 0
-new_groups_found = False
-while not new_groups_found and attempts < max_attempts:
-    attempts += 1
-
+while not new_groups_found:   # to do: add a maximum number of tries
+  
     # Calculate remainder when dividing number of participants by chosen group size
-    remainder = len(participants) % group_size
-
+    remainder = len(participants)%group_size
+    
     # If there is 2 or more people left over, make a group of this size
     if remainder != 0 and remainder != 1:
         make_group(remainder)
-
+        
     # If there is exactly 1 person left over, create a group with an extra member
     elif remainder == 1:
-        make_group(group_size + 1)
-
+        make_group(group_size+1)
+  
     # while still participants left to group, create groups of the chosen group size
-    nparticipants = copy.deepcopy(participants)  #maybe it's best to put nparticipants = participants[:] instead?
     while len(nparticipants) > 0:
-        make_group(group_size)
+        make_group(group_size) 
+        
+    # check if all new groups are indeed new, else reset
+    if ngroups.intersection(ogroups):
+        ngroups = set()
+        nparticipants = copy.deepcopy(participants)
+    else:
+        new_groups_found = True
 
-    try:
-        # check if all new groups are indeed new, else reset
-        if len(set(ngroups) - set(ogroups)) == len(ngroups):
-            new_groups_found = True
-        else:
-            ngroups = set()
-            nparticipants = participants[:]
-    except ValueError:   # If ngroups and ogroups have different lengths, continue loop
-    
-    #If after 10 attempts no new groups have been found, the program will procceed with the latest groups
-        if attempts == max_attempts: 
-            print("We tried our best to create new groups and bring together people that hadn't met before. "
-                  "Unfortunately, that wasn't entirely possible. One or more groups might have already met.")
-        continue
+# Get a new conversation starter and save it into a file 
 
-# assemble output for printout
+# load conversation starters
+convo_starters = list(conversation_starters.iloc[:,0])
+
+# read previous starters from file (to avoid redundancies)
+# if the is no previous yet, create a empty list
+try:
+    previous_starters = pd.read_csv("previous_starters.csv")["conversation_starters"].tolist()
+except FileNotFoundError:
+    previous_starters = []
+
+# function to choose a conversation starter
+def choose_convo_starter():
+        # choose a conversation starter that hasn't been used before
+        convo_starter = random.choice(convo_starters)
+        while convo_starter in previous_starters:
+            # if the starter is in the already used list of starters try 50 times to find another starter
+            attempts = 1 
+            while attempts < 51:
+                convo_starter = random.choice(convo_starters)
+                attempts = attempts + 1
+            else:
+                print("\nNOTE: The program was unable to find a new conversation starter.")
+                print("Therefore, a already used conversation starter was used.\n")
+                break
+        return convo_starter
+
+# assemble the console output
+# assemble output for printout of groups
 output_string = ""
 
-output_string += "------------------------\n"
-output_string += "Today's coffee partners:\n"
-output_string += "------------------------\n"
+output_string += "------------------------------\n"
+output_string += "This week's coffee groups are:\n"
+output_string += "------------------------------\n"
 
+# assemble output for printout of conversation starter
+convo_starter = "-------------------------------------\n"
+convo_starter += "This week's conversation starter is:\n"
+convo_starter += "------------------------------------\n"
+
+
+#Create all the groups
+group_number = 1
 for group in ngroups:
     group = list(group)
-    output_string += "* "
+    output_string += f"Group {group_number}:\n"
     for i in range(0,len(group)):
         name_email_group = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]} ({group[i]})"
         if i < len(group)-1:
-            output_string += name_email_group + ", "
-        else:
             output_string += name_email_group + "\n"
+        else:
+            output_string += name_email_group + "\n\n"
+    group_number = group_number + 1 
 
     
-# write output to console
+# write all output to console 
 print(output_string)
 
-# print conversation starter  to screen too    
-print(f'''
------------------------------
-Today's conversation starter:
------------------------------    
-{convo_starter}''')
+# choose and print conversation starter
+selected_convo = choose_convo_starter()
+convo_starter += f"'{selected_convo}'\n"
+print(convo_starter)
+
+# write previous conversation starters starters to file
+previous_starters.append(selected_convo)
+pd.DataFrame({"conversation_starters": previous_starters}).to_csv("previous_starters.csv", index=False)
+
 
 # Output text file with personalized message to each group member
 with open(messages_txt, "w") as file:
@@ -189,23 +220,89 @@ The conversation starter for this week is:
 Wishing you lots of fun on your coffee date this week!
 The Mystery Coffee 2.0 Team \n \n \n'''
             file.write(message)
+    
 
-# write output into text file for later use
-with open(new_groups_txt, "wb") as file:
-    file.write(output_string.encode("utf8"))
+# function for sending the emails
+def send_email(email, name, output):
+    smtp_server = "smtp.gmail.com"
+    port = 587
+    sender_email = "coffeepartneruu@gmail.com"
+    password = "egwnmceqwlrawygf"
+    
+    
+    context = ssl.create_default_context()
+    
+    try:
+        server = smtplib.SMTP(smtp_server,port)
+        server.ehlo() # Can be omitted
+        server.starttls(context=context) # Secure the connection
+        server.ehlo() # Can be omitted
+        server.login(sender_email, password)
+        sender_email = "coffeepartneruu@gmail.com"
+        message = f"""Subject: Your coffee group for this week
+ 
+            
+Dear {name}, 
 
-# write new groups into CSV file (for e.g. use in MailMerge)
+With this email you receive your group information and conversation starter for this week's coffee meeting!
+
+Your group for this week is:
+{output}
+    
+The conversation starter for this week is:
+{selected_convo}
+
+Wishing you lots of fun on your coffee date this week!
+
+With best regards,
+The Mystery Coffee 2.0 Team"""
+            
+        server.sendmail(sender_email, email, message)
+    except Exception as e:
+        # Print any error messages to stdout
+        print(e)
+    finally:
+        server.quit()
+    
+# function for loading animation used for sending email which could take some time
+def animated_loading():
+    chars = "/—\|" 
+    for char in chars:
+        sys.stdout.write('\r'+'Busy sending all emails...'+char)
+        time.sleep(.1)
+        sys.stdout.flush() 
+
+
+
+# write new groups into CSV file and send an email
+print("---------------------------------------------------")
+print("Saving new groups into csv file and sending e-mails")
+print("---------------------------------------------------")
 with open(new_groups_csv, "w") as file:
-    header = ["name1", "email1", "name2", "email2", "name3", "email3"]
+    #make headers up to maximum group size of 6
+    header = ["name1", "email1", "name2", "email2", "name3", "email3" , "name4", "email4" , "name5", "email5" , "name6", "email6"]
     file.write(DELIMITER.join(header) + "\n")
     for group in ngroups:
         group = list(group)
         for i in range(0,len(group)):
+            receiver_email = f"{group[i]}"
+            receiver_name = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]}"
             name_email_group = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]}{DELIMITER} {group[i]}"
+            output_email = ""
+            for i in range(0,len(group)):
+                name_email_group = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]} ({group[i]})"
+                if i < len(group):
+                    output_email += name_email_group + "\n"
+            
+            #send e-mail
+            send_email(receiver_email, receiver_name, output_email)
+            
+            #write to the file
             if i < len(group)-1:
                 file.write(name_email_group + DELIMITER + " ")
             else:
                 file.write(name_email_group + "\n")
+            animated_loading()
                 
 # append groups to history file
 if os.path.exists(all_groups_csv):
@@ -221,50 +318,5 @@ with open(all_groups_csv, mode) as file:
                 file.write(group[i] + DELIMITER)
             else:
                 file.write(group[i] + "\n")
-                
-# import email
-import smtplib, ssl
 
-smtp_server = "smtp.gmail.com"
-port = 587
-sender_email = "coffeepartneruu@gmail.com"
-password = "egwnmceqwlrawygf"
-
-#send email with group
-# Create a secure SSL context
-context = ssl.create_default_context()
-
-with open('Coffee Partner Lottery new groups.csv', mode='r') as csv_file:
-    groups_reader = csv.DictReader(csv_file)
-    output_string = ""
-    receiver_email = []
-    for row in groups_reader:
-        output_string = f"{row['name1']}\n{row['name2']}"
-        receiver_email = [f'{row["email1"]}', f'{row["email2"]}']
-        try:
-            server = smtplib.SMTP(smtp_server,port)
-            server.ehlo() # Can be omitted
-            server.starttls(context=context) # Secure the connection
-            server.ehlo() # Can be omitted
-            server.login(sender_email, password)
-            # TODO: Send email here
-            sender_email = "coffeepartneruu@gmail.com"
-            message = f"""Subject: Your coffee group for this week
- 
-            
-Hi,
-This message is sent from Python.
-Your group for this week is:
-{output_string}"""
-            
-            server.sendmail(sender_email, receiver_email, message)
-        except Exception as e:
-            # Print any error messages to stdout
-            print(e)
-        finally:
-            server.quit()
-        receiver_email = []
-             
-# print finishing message
-print()
-print("Job done.")
+print("\n\nAll done.")
