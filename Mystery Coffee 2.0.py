@@ -67,9 +67,6 @@ ngroups = set()
 # running set of participants
 nparticipants = copy.deepcopy(participants)
 
-# Boolean flag to check if new groups has been found
-new_groups_found = False
-
 # welcome user
 print("Welcome to the mystery coffee group maker 2.0!")
 print("""This program will make groups based on all participants
@@ -100,8 +97,15 @@ def make_group(size):
     
 
 # try creating new groups until successful
-while not new_groups_found:   # to do: add a maximum number of tries
-  
+max_attempts = 30
+attempts = 0
+# Boolean flag to check if new groups has been found
+new_groups_found = False
+
+while not new_groups_found and attempts < max_attempts:
+    # Increase the attempt count   
+    attempts += 1
+    
     # Calculate remainder when dividing number of participants by chosen group size
     remainder = len(participants)%group_size
     
@@ -115,7 +119,14 @@ while not new_groups_found:   # to do: add a maximum number of tries
   
     # while still participants left to group, create groups of the chosen group size
     while len(nparticipants) > 0:
-        make_group(group_size) 
+        make_group(group_size)
+    
+    # If max attempts just continue with an already used group
+    if attempts == max_attempts: 
+        print("\nNOTE: The program tried to create new groups and bring together people that hadn't met before. "
+              "Unfortunately, that wasn't entirely possible. One or more groups might have already met.\n")
+        new_groups_found = True
+        break
         
     # check if all new groups are indeed new, else reset
     if ngroups.intersection(ogroups):
@@ -124,8 +135,8 @@ while not new_groups_found:   # to do: add a maximum number of tries
     else:
         new_groups_found = True
 
-# Get a new conversation starter and save it into a file 
 
+# Get a new conversation starter and save it into a file 
 # load conversation starters
 convo_starters = list(conversation_starters.iloc[:,0])
 
@@ -146,6 +157,7 @@ def choose_convo_starter():
             while attempts < 51:
                 convo_starter = random.choice(convo_starters)
                 attempts = attempts + 1
+                print(attempts)
             else:
                 print("\nNOTE: The program was unable to find a new conversation starter.")
                 print("Therefore, a already used conversation starter was used.\n")
@@ -263,6 +275,7 @@ The Mystery Coffee 2.0 Team"""
         print(e)
     finally:
         server.quit()
+
     
 # function for loading animation used for sending email which could take some time
 def animated_loading():
@@ -273,8 +286,7 @@ def animated_loading():
         sys.stdout.flush() 
 
 
-
-# write new groups into CSV file and send an email
+# Send an email with the groups to the participants
 print("---------------------------------------------------")
 print("Saving new groups into csv file and sending e-mails")
 print("---------------------------------------------------")
@@ -284,10 +296,10 @@ with open(new_groups_csv, "w") as file:
     file.write(DELIMITER.join(header) + "\n")
     for group in ngroups:
         group = list(group)
+        output_csv = ""
         for i in range(0,len(group)):
             receiver_email = f"{group[i]}"
             receiver_name = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]}"
-            name_email_group = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]}{DELIMITER} {group[i]}"
             output_email = ""
             for i in range(0,len(group)):
                 name_email_group = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]} ({group[i]})"
@@ -297,13 +309,10 @@ with open(new_groups_csv, "w") as file:
             #send e-mail
             send_email(receiver_email, receiver_name, output_email)
             
-            #write to the file
-            if i < len(group)-1:
-                file.write(name_email_group + DELIMITER + " ")
-            else:
-                file.write(name_email_group + "\n")
+            #show loading animation
             animated_loading()
-                
+
+            
 # append groups to history file
 if os.path.exists(all_groups_csv):
     mode = "a"
