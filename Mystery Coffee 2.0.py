@@ -13,6 +13,12 @@ import copy
 import os
 import smtplib, ssl #used for email sending
 import sys, time #used for loading animation
+import datetime
+
+#code to get the week number
+my_date = datetime.date.today()  
+year, week_num, day_of_week = my_date.isocalendar()  # Using isocalendar() function
+week = str(week_num)
 
 
 # link to the online file with all participants linked to google form
@@ -70,12 +76,12 @@ nparticipants = copy.deepcopy(participants)
 # welcome user
 print("Welcome to the mystery coffee group maker 2.0!")
 print("""This program will make groups based on all participants
-that signed up via the online form (https://for ms.gle/sBDoR1QxJJr4EeecA)""")
+that signed up via the online form (https://forms.gle/sLev1JQSUKhfYPqP7)""")
 
 # ask for group size, max 5
 while True:
     try:
-        group_size =  int(input('''How many people would you like in each group? (Please enter an number between 2 and 5) '''))
+        group_size =  int(input('''\nHow many people would you like in each group? (Please enter an number between 2 and 5) '''))
         if group_size < 2 :
             print ('The minimum number of group members is 2. Please try again.')
         if group_size > 1 and group_size < 6:
@@ -97,7 +103,7 @@ def make_group(size):
     
 
 # try creating new groups until successful
-max_attempts = 30
+max_attempts = 50
 attempts = 0
 # Boolean flag to check if new groups has been found
 new_groups_found = False
@@ -124,7 +130,7 @@ while not new_groups_found and attempts < max_attempts:
     # If max attempts just continue with an already used group
     if attempts == max_attempts: 
         print("\nNOTE: The program tried to create new groups and bring together people that hadn't met before. "
-              "Unfortunately, that wasn't entirely possible. One or more groups might have already met.\n")
+              "Unfortunately, that wasn't entirely possible. One or more groups might have already met before.\n")
         new_groups_found = True
         break
         
@@ -168,12 +174,12 @@ def choose_convo_starter():
 # assemble output for printout of groups
 output_string = ""
 
-output_string += "------------------------------\n"
-output_string += "This week's coffee groups are:\n"
-output_string += "------------------------------\n"
+output_string += "\n----------------------------------------\n"
+output_string += f"This week's coffee groups are (week {week}):\n"
+output_string += "----------------------------------------\n"
 
 # assemble output for printout of conversation starter
-convo_starter = "-------------------------------------\n"
+convo_starter = "------------------------------------\n"
 convo_starter += "This week's conversation starter is:\n"
 convo_starter += "------------------------------------\n"
 
@@ -223,7 +229,7 @@ Dear {formdata[formdata[header_email] == group[i]].iloc[0][header_name]},
 
 Thank you for signing up for the Mystery Coffee 2.0 this week.
 
-Your group for this week is: 
+Your group for week {week}: 
     {group_names_emails}
 
 The conversation starter for this week is: 
@@ -232,7 +238,7 @@ The conversation starter for this week is:
 Wishing you lots of fun on your coffee date this week!
 The Mystery Coffee 2.0 Team \n \n \n'''
             file.write(message)
-    
+
 
 # function for sending the emails
 def send_email(email, name, output):
@@ -251,7 +257,7 @@ def send_email(email, name, output):
         server.ehlo() # Can be omitted
         server.login(sender_email, password)
         sender_email = "coffeepartneruu@gmail.com"
-        message = f"""Subject: Your coffee group for this week
+        message = f"""Subject: Your coffee group for week {week}
  
             
 Dear {name}, 
@@ -287,30 +293,27 @@ def animated_loading():
 
 
 # Send an email with the groups to the participants
-print("---------------------------------------------------")
-print("Saving new groups into csv file and sending e-mails")
-print("---------------------------------------------------")
-with open(new_groups_csv, "w") as file:
-    #make headers up to maximum group size of 6
-    header = ["name1", "email1", "name2", "email2", "name3", "email3" , "name4", "email4" , "name5", "email5" , "name6", "email6"]
-    file.write(DELIMITER.join(header) + "\n")
-    for group in ngroups:
-        group = list(group)
-        output_csv = ""
+print("-----------------------------------")
+print("Sending e-mails to all participants")
+print("-----------------------------------")
+#make headers up to maximum group size of 6
+for group in ngroups:
+    group = list(group)
+    output_csv = ""
+    for i in range(0,len(group)):
+        receiver_email = f"{group[i]}"
+        receiver_name = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]}"
+        output_email = ""
         for i in range(0,len(group)):
-            receiver_email = f"{group[i]}"
-            receiver_name = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]}"
-            output_email = ""
-            for i in range(0,len(group)):
-                name_email_group = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]} ({group[i]})"
-                if i < len(group):
-                    output_email += name_email_group + "\n"
+            name_email_group = f"{formdata[formdata[header_email] == group[i]].iloc[0][header_name]} ({group[i]})"
+            if i < len(group):
+                output_email += name_email_group + "\n"
             
-            #send e-mail
-            send_email(receiver_email, receiver_name, output_email)
+        #send e-mail
+        send_email(receiver_email, receiver_name, output_email)
             
-            #show loading animation
-            animated_loading()
+        #show loading animation
+        animated_loading()
 
             
 # append groups to history file
